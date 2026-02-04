@@ -10,6 +10,7 @@ from statistics import median
 from ..detector.attention_analyzer import AttentionState
 from ..config import (
     STATE_BUFFER_SIZE,
+    STATE_HOLD_TIME,
     AWAY_CONFIRMATION_DELAY,
     FOCUSED_RETURN_DELAY,
     DIM_THRESHOLD_1,
@@ -18,7 +19,9 @@ from ..config import (
     DIM_LEVEL_2,
     DISPLAY_OFF_THRESHOLD,
     MIN_BRIGHTNESS_BEFORE_OFF,
-    MAX_BRIGHTNESS,
+    BRIGHTNESS_FOCUSED,
+    BRIGHTNESS_AWAY,
+    BRIGHTNESS_DISTRACTED,
     ENABLE_DISPLAY_SLEEP,
 )
 
@@ -53,12 +56,9 @@ class StateManager:
         Returns:
             Delay in seconds
         """
-        if state == AttentionState.FOCUSED:
-            return FOCUSED_RETURN_DELAY
-        elif state == AttentionState.AWAY:
-            return AWAY_CONFIRMATION_DELAY
-        else:
-            return FOCUSED_RETURN_DELAY
+        # Use STATE_HOLD_TIME as the primary delay for all state changes
+        # This ensures consistent behavior and prevents rapid state flickering
+        return STATE_HOLD_TIME
 
     def _get_median_state(self) -> AttentionState:
         """
@@ -131,39 +131,20 @@ class StateManager:
             (target_brightness, should_turn_off_display)
         """
         if self.current_state == AttentionState.FOCUSED:
-            # User is focused, full brightness
-            return MAX_BRIGHTNESS, False
+            # User is focused, use configured focused brightness
+            return BRIGHTNESS_FOCUSED, False
 
         elif self.current_state == AttentionState.AWAY:
-            # User is away, apply time-based dimming
-            if self.state_duration < DIM_THRESHOLD_1:
-                # Just turned away, keep full brightness
-                return MAX_BRIGHTNESS, False
-
-            elif self.state_duration < DIM_THRESHOLD_2:
-                # First dim level
-                return DIM_LEVEL_1, False
-
-            elif self.state_duration < DISPLAY_OFF_THRESHOLD:
-                # Second dim level
-                return DIM_LEVEL_2, False
-
-            else:
-                # Turn off display (if enabled)
-                if ENABLE_DISPLAY_SLEEP:
-                    return MIN_BRIGHTNESS_BEFORE_OFF, True
-                else:
-                    # Display sleep disabled, just dim to minimum
-                    return MIN_BRIGHTNESS_BEFORE_OFF, False
+            # User is away, use configured away brightness (instant, no time-based dimming)
+            return BRIGHTNESS_AWAY, False
 
         elif self.current_state == AttentionState.DISTRACTED:
-            # User is present but not looking, don't change brightness
-            # This is a "neutral" state - maintain current level
-            return MAX_BRIGHTNESS, False
+            # User is present but not looking, use distracted brightness
+            return BRIGHTNESS_DISTRACTED, False
 
         else:  # UNKNOWN
-            # Cannot determine state, don't change brightness
-            return MAX_BRIGHTNESS, False
+            # Cannot determine state, use focused brightness (safe default)
+            return BRIGHTNESS_FOCUSED, False
 
     def get_state_info(self) -> dict:
         """

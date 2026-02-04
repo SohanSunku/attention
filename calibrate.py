@@ -19,6 +19,7 @@ from attention_monitor.detector import (
     GazeEstimator,
     AttentionAnalyzer,
 )
+from attention_monitor.state import StateManager
 from attention_monitor import config
 
 # Colors
@@ -127,6 +128,7 @@ def main():
     print(f"  HEAD_POSE_PITCH_THRESHOLD = {config.HEAD_POSE_PITCH_THRESHOLD}°")
     print(f"  EYE_ASPECT_RATIO_THRESHOLD = {config.EYE_ASPECT_RATIO_THRESHOLD}")
     print(f"  GAZE_AWAY_THRESHOLD = {config.GAZE_AWAY_THRESHOLD}")
+    print(f"  STATE_HOLD_TIME = {config.STATE_HOLD_TIME}s (state must hold before change)")
     print("\nStarting in 3 seconds...")
     time.sleep(3)
 
@@ -136,6 +138,7 @@ def main():
     head_pose_estimator = HeadPoseEstimator()
     gaze_estimator = GazeEstimator()
     attention_analyzer = AttentionAnalyzer()
+    state_manager = StateManager()
 
     if not camera.start():
         print("ERROR: Failed to start camera")
@@ -180,22 +183,44 @@ def main():
                 # Get detection values
                 head_pose_angles = head_pose_estimator.estimate(landmarks, frame.shape[:2])
                 gaze_info = gaze_estimator.estimate(landmarks)
-                attention_state, confidence = attention_analyzer.analyze(
+                # Get raw detected state
+                raw_attention_state, confidence = attention_analyzer.analyze(
                     landmarks, head_pose_angles, gaze_info
                 )
+
+                # Update state manager to apply STATE_HOLD_TIME
+                state_manager.update(raw_attention_state, confidence)
+                state_info = state_manager.get_state_info()
+                managed_state = state_manager.current_state
 
                 # Title
                 cv2.putText(display, "CALIBRATION MODE", (info_x, info_y),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
                 info_y += 40
 
-                # Attention State
-                state_color = attention_analyzer.get_state_color(attention_state)
-                cv2.putText(display, f"State: {attention_state.value.upper()}",
-                           (info_x, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, state_color, 2)
-                cv2.putText(display, f"Confidence: {confidence:.2f}",
-                           (info_x + 250, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, WHITE, 1)
-                info_y += 50
+                # Attention State - Show both raw and managed
+                raw_color = attention_analyzer.get_state_color(raw_attention_state)
+                managed_color = attention_analyzer.get_state_color(managed_state)
+
+                # Raw detected state
+                cv2.putText(display, f"Detected: {raw_attention_state.value.upper()}",
+                           (info_x, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, raw_color, 2)
+                info_y += 25
+
+                # Managed state (after STATE_HOLD_TIME)
+                cv2.putText(display, f"Active: {managed_state.value.upper()}",
+                           (info_x, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, managed_color, 2)
+                cv2.putText(display, f"({state_info['duration']:.1f}s)",
+                           (info_x + 200, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, WHITE, 1)
+                info_y += 25
+
+                # Candidate state (if transitioning)
+                if state_info['candidate_state']:
+                    cand_color = attention_analyzer.get_state_color(state_info['candidate_state'])
+                    remaining = config.STATE_HOLD_TIME - state_info['candidate_time']
+                    cv2.putText(display, f"Next: {state_info['candidate_state'].value.upper()} ({remaining:.1f}s)",
+                               (info_x, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, cand_color, 1)
+                info_y += 30
 
                 # Head Pose Section
                 if head_pose_angles:
@@ -307,7 +332,8 @@ def main():
                 timestamp = time.strftime("%H:%M:%S")
                 entry = {
                     'time': timestamp,
-                    'state': attention_state.value if landmarks is not None else 'none',
+                    'state': managed_state.value if landmarks is not None else 'none',
+                    'raw_state': raw_attention_state.value if landmarks is not None else 'none',
                     'yaw': yaw if head_pose_angles else 0,
                     'pitch': pitch if head_pose_angles else 0,
                     'left_gaze': gaze_info['left_gaze'] if gaze_info else 0,

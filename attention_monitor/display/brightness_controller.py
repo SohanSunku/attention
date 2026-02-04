@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Optional
 
-from ..config import MIN_BRIGHTNESS, MAX_BRIGHTNESS
+from ..config import MIN_BRIGHTNESS, MAX_BRIGHTNESS, BRIGHTNESS_FOCUSED
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,14 @@ class BrightnessController:
     def __init__(self):
         """Initialize brightness controller"""
         self.available = True
-        self.current_brightness = 0.5  # Start at middle (we can't read actual value)
-        self.original_brightness = 0.5
-        self.target_brightness = 0.5
+        self.current_brightness = 1.0  # Assume starting at system max
+        self.original_brightness = 1.0
+        self.target_brightness = BRIGHTNESS_FOCUSED
 
-        logger.info("Brightness controller initialized (keyboard shortcuts)")
+        # Set to configured focused brightness on startup
+        self.set_brightness(BRIGHTNESS_FOCUSED)
+
+        logger.info(f"Brightness controller initialized at {int(BRIGHTNESS_FOCUSED * 100)}%")
 
     def _press_brightness_key(self, key_code: int, times: int = 1):
         """
@@ -52,9 +55,9 @@ class BrightnessController:
 
     def _set_to_max_brightness(self):
         """Set brightness to maximum by pressing up key many times"""
-        # Press brightness up key max times to ensure we're at 100%
+        # Press brightness up key max times to ensure we're at configured focused level
         self._press_brightness_key(144, self.BRIGHTNESS_LEVELS + 2)
-        self.current_brightness = 1.0
+        self.current_brightness = BRIGHTNESS_FOCUSED
 
     def _set_to_min_brightness(self):
         """Set brightness to minimum by pressing down key many times"""
@@ -144,9 +147,9 @@ class BrightnessController:
 
     def restore_original(self):
         """Restore original brightness"""
-        logger.info("Restoring original brightness (setting to 100%)")
-        # Set to max brightness on restore
-        self._set_to_max_brightness()
+        logger.info(f"Restoring to focused brightness ({int(BRIGHTNESS_FOCUSED * 100)}%)")
+        # Set to configured focused brightness on restore
+        self.set_brightness(BRIGHTNESS_FOCUSED)
 
     def cleanup(self):
         """Clean up resources"""
