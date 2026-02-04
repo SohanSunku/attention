@@ -19,6 +19,7 @@ from ..config import (
     DISPLAY_OFF_THRESHOLD,
     MIN_BRIGHTNESS_BEFORE_OFF,
     MAX_BRIGHTNESS,
+    ENABLE_DISPLAY_SLEEP,
 )
 
 logger = logging.getLogger(__name__)
@@ -148,8 +149,12 @@ class StateManager:
                 return DIM_LEVEL_2, False
 
             else:
-                # Turn off display
-                return MIN_BRIGHTNESS_BEFORE_OFF, True
+                # Turn off display (if enabled)
+                if ENABLE_DISPLAY_SLEEP:
+                    return MIN_BRIGHTNESS_BEFORE_OFF, True
+                else:
+                    # Display sleep disabled, just dim to minimum
+                    return MIN_BRIGHTNESS_BEFORE_OFF, False
 
         elif self.current_state == AttentionState.DISTRACTED:
             # User is present but not looking, don't change brightness

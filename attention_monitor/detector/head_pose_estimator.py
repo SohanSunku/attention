@@ -101,6 +101,16 @@ class HeadPoseEstimator:
         yaw = np.degrees(yaw)
         roll = np.degrees(roll)
 
+        # Adjust pitch home position to 0° (looking straight at screen)
+        # Subtract 180° to recenter from ~180° to ~0°
+        pitch = pitch - 180.0
+
+        # Normalize pitch to -180 to 180 range
+        if pitch < -180:
+            pitch += 360
+        elif pitch > 180:
+            pitch -= 360
+
         return yaw, pitch, roll
 
     def is_looking_away(

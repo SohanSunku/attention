@@ -1,0 +1,16 @@
+ATTENTION MONITOR - CALIBRATION LOG
+============================================================
+
+Current thresholds:
+  HEAD_POSE_YAW_THRESHOLD = 40
+  HEAD_POSE_PITCH_THRESHOLD = 20
+  EYE_ASPECT_RATIO_THRESHOLD = 0.15
+  GAZE_AWAY_THRESHOLD = 0.15
+
+Snapshots:
+------------------------------------------------------------
+[00:13:02] State: distracted, Yaw: 30.2°, Pitch: -2.6°, L.Gaze: 0.54, R.Gaze: 0.60, L.EAR: 0.33, R.EAR: 0.35
+[00:13:05] State: distracted, Yaw: -22.2°, Pitch: -3.9°, L.Gaze: 0.29, R.Gaze: 0.33, L.EAR: 0.28, R.EAR: 0.33
+[00:13:08] State: focused, Yaw: 28.7°, Pitch: -1.9°, L.Gaze: 0.39, R.Gaze: 0.44, L.EAR: 0.30, R.EAR: 0.31
+[00:13:16] State: focused, Yaw: 35.4°, Pitch: -2.0°, L.Gaze: 0.46, R.Gaze: 0.51, L.EAR: 0.34, R.EAR: 0.31
+[00:13:19] State: focused, Yaw: 26.2°, Pitch: -4.2°, L.Gaze: 0.45, R.Gaze: 0.53, L.EAR: 0.14, R.EAR: 0.22

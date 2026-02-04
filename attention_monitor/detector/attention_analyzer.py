@@ -6,6 +6,17 @@ from enum import Enum
 from typing import Optional, Tuple
 import numpy as np
 
+from ..config import (
+    HEAD_POSE_YAW_THRESHOLD,
+    HEAD_POSE_PITCH_THRESHOLD,
+    HEAD_POSE_YAW_DISTRACTED,
+    HEAD_POSE_PITCH_DISTRACTED,
+    GAZE_CENTER_MIN,
+    GAZE_CENTER_MAX,
+    GAZE_SLIGHT_AWAY_MIN,
+    GAZE_SLIGHT_AWAY_MAX,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,12 +75,13 @@ class AttentionAnalyzer:
         if head_pose_angles is not None:
             yaw, pitch, roll = head_pose_angles
 
-            # Head turned significantly away
-            if abs(yaw) > 30 or abs(pitch) > 20:
+            # Head turned significantly away (using config thresholds)
+            if abs(yaw) > HEAD_POSE_YAW_THRESHOLD or abs(pitch) > HEAD_POSE_PITCH_THRESHOLD:
                 return AttentionState.AWAY, 0.95
 
             # Moderate head turn reduces confidence but still focused
-            if abs(yaw) > 20 or abs(pitch) > 15:
+            # Using config thresholds for DISTRACTED zone
+            if abs(yaw) > HEAD_POSE_YAW_DISTRACTED or abs(pitch) > HEAD_POSE_PITCH_DISTRACTED:
                 confidence *= 0.7
                 state = AttentionState.DISTRACTED
 
@@ -81,12 +93,12 @@ class AttentionAnalyzer:
             # Average gaze position
             avg_gaze = (left_gaze + right_gaze) / 2.0
 
-            # Definite look away
-            if avg_gaze < 0.30 or avg_gaze > 0.70:
+            # Definite look away (using config threshold)
+            if avg_gaze < GAZE_CENTER_MIN or avg_gaze > GAZE_CENTER_MAX:
                 return AttentionState.DISTRACTED, 0.85
 
-            # Slight gaze away reduces confidence
-            if avg_gaze < 0.35 or avg_gaze > 0.65:
+            # Slight gaze away reduces confidence (using config threshold)
+            if avg_gaze < GAZE_SLIGHT_AWAY_MIN or avg_gaze > GAZE_SLIGHT_AWAY_MAX:
                 confidence *= 0.8
                 if state == AttentionState.FOCUSED:
                     state = AttentionState.DISTRACTED
